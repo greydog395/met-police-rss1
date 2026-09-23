@@ -1,0 +1,10 @@
+title: "Met Police - Counter Terrorism Command"
+description: "Metropolitan Police news tagged Counter Terrorism Command"
+website_url: "https://news.met.police.uk/tag/counter-terrorism-command"
+feed_url: "https://YOUR-USERNAME.github.io/met-police-rss/feed.xml"
+
+max_items: 50
+
+sources:
+  - name: "Met Police - Counter Terrorism Command"
+    url: "https://news.met.police.uk/tag/counter-terrorism-command"
