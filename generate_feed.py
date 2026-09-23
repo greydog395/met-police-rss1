@@ -28,18 +28,21 @@ def clean_text(value: str | None) -> str:
         return ""
 
     value = html.unescape(str(value))
+
     value = re.sub(
         r"<script.*?</script>",
         "",
         value,
         flags=re.IGNORECASE | re.DOTALL,
     )
+
     value = re.sub(
         r"<style.*?</style>",
         "",
         value,
         flags=re.IGNORECASE | re.DOTALL,
     )
+
     value = re.sub(r"<[^>]+>", " ", value)
     value = re.sub(r"\s+", " ", value)
 
@@ -102,11 +105,11 @@ def scrape_met_police_page(source: dict) -> list[dict]:
         headers={"User-Agent": USER_AGENT},
         timeout=30,
     )
+
     response.raise_for_status()
 
     soup = BeautifulSoup(response.text, "html.parser")
 
-    # Focus on the main page content.
     main = (
         soup.find("main")
         or soup.find("article")
@@ -126,11 +129,11 @@ def scrape_met_police_page(source: dict) -> list[dict]:
 
         article_url = urljoin(source_url, href)
 
-        # Only include links from the Met Police news website.
-        if not article_url.startswith("https://news.met.police.uk/"):
+        if not article_url.startswith(
+            "https://news.met.police.uk/"
+        ):
             continue
 
-        # Ignore navigation and non-article pages.
         ignored_paths = [
             "/tag/",
             "/category/",
@@ -141,10 +144,12 @@ def scrape_met_police_page(source: dict) -> list[dict]:
             "/terms",
         ]
 
-        if any(path in article_url.lower() for path in ignored_paths):
+        if any(
+            path in article_url.lower()
+            for path in ignored_paths
+        ):
             continue
 
-        # Ignore very short links, which are usually navigation items.
         if len(title) < 10:
             continue
 
@@ -153,7 +158,6 @@ def scrape_met_police_page(source: dict) -> list[dict]:
 
         seen_links.add(article_url)
 
-        # Find the surrounding article/list item text.
         container = (
             link_element.find_parent("article")
             or link_element.find_parent("li")
@@ -167,7 +171,6 @@ def scrape_met_police_page(source: dict) -> list[dict]:
         else:
             container_text = title
 
-        # Ignore obvious navigation/footer content.
         unwanted_text = [
             "follow",
             "subscribe",
@@ -185,12 +188,8 @@ def scrape_met_police_page(source: dict) -> list[dict]:
 
         published_at = parse_date(container_text)
 
-        description = container_text
+        description = container_text.replace(title, "", 1)
 
-        # Remove the title from the description.
-        description = description.replace(title, "", 1)
-
-        # Remove dates from the description.
         description = re.sub(
             r"\b\d{1,2}\s+"
             r"(January|February|March|April|May|June|July|August|"
@@ -205,9 +204,7 @@ def scrape_met_police_page(source: dict) -> list[dict]:
         description = clean_text(description)
 
         if not description:
-            description = (
-                f"New Met Police article: {title}"
-            )
+            description = f"New Met Police article: {title}"
 
         items.append(
             {
@@ -257,6 +254,9 @@ def build_rss(config: dict, items: list[dict]) -> str:
     ]
 
     for item in items:
+        source_url = escape_xml(item["source_url"])
+        source_name = escape_xml(item["source_name"])
+
         lines.extend(
             [
                 "    <item>",
@@ -278,9 +278,8 @@ def build_rss(config: dict, items: list[dict]) -> str:
                     f"</description>"
                 ),
                 (
-                    f'      <source url="'
-                    f"{escape_xml(item['source_url'])}">"
-                    f"{escape_xml(item['source_name'])}"
+                    f'      <source url="{source_url}">'
+                    f"{source_name}"
                     "</source>"
                 ),
                 "    </item>",
@@ -306,14 +305,13 @@ def main() -> None:
 
     for source in config.get("sources", []):
         try:
-            items = scrape_met_police_page(source)
-            all_items.extend(items)
+            source_items = scrape_met_police_page(source)
+            all_items.extend(source_items)
         except Exception as error:
             print(
                 f"Error scraping {source.get('url')}: {error}"
             )
 
-    # Remove duplicate articles using their URLs.
     unique_items = {}
 
     for item in all_items:
@@ -321,7 +319,6 @@ def main() -> None:
 
     items = list(unique_items.values())
 
-    # Newest articles first.
     items.sort(
         key=lambda item: item["published_at"],
         reverse=True,
