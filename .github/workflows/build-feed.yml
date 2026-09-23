@@ -1,0 +1,71 @@
+name: Build Met Police RSS Feed
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    # Run every 30 minutes.
+    # GitHub uses UTC for scheduled workflows.
+    - cron: "*/30 * * * *"
+
+  push:
+    branches:
+      - main
+    paths:
+      - "config.yml"
+      - "generate_feed.py"
+      - "requirements.txt"
+      - ".github/workflows/build-feed.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate RSS XML file
+        run: |
+          python generate_feed.py
+
+      - name: Disable Jekyll processing
+        run: |
+          touch public/.nojekyll
+
+      - name: Upload generated website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "./public"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
