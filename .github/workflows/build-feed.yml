@@ -5,7 +5,7 @@ on:
 
   schedule:
     # Run every 30 minutes.
-    # GitHub uses UTC for scheduled workflows.
+    # GitHub scheduled workflows use UTC.
     - cron: "*/30 * * * *"
 
   push:
@@ -39,12 +39,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Python packages
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Generate RSS XML file
+      - name: Generate RSS feed
         run: |
           python generate_feed.py
 
@@ -52,7 +52,7 @@ jobs:
         run: |
           touch public/.nojekyll
 
-      - name: Upload generated website
+      - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: "./public"
